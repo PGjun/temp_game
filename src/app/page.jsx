@@ -152,6 +152,32 @@ export default function Home() {
           })
         )}
       </div>
+      <div className='flex justify-between px-[40px]'>
+        <button
+          className='w-[40px] mt-[40px] h-[40px] border text-[30px] flex items-center justify-center'
+          onClick={() => movePlayer("ArrowLeft")}
+        >
+          ⬅️
+        </button>
+        <button
+          className='w-[40px] mt-[40px] h-[40px] border text-[30px] flex items-center justify-center'
+          onClick={() => movePlayer("ArrowUp")}
+        >
+          ⬆️
+        </button>
+        <button
+          className='w-[40px] mt-[40px] h-[40px] border text-[30px] flex items-center justify-center'
+          onClick={() => movePlayer("ArrowDown")}
+        >
+          ⬇️
+        </button>
+        <button
+          className='w-[40px] mt-[40px] h-[40px] border text-[30px] flex items-center justify-center'
+          onClick={() => movePlayer("ArrowRight")}
+        >
+          ➡️
+        </button>
+      </div>
     </div>
   )
 }
