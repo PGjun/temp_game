@@ -2,10 +2,35 @@
 
 import { useEffect, useState } from "react"
 
+const TIME = 1.5
+const LIFE = 2
+
 export default function Home() {
   const [board, setBoard] = useState(createInitialBoard())
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 })
+  const [lives, setLives] = useState(LIFE)
   const [gameWon, setGameWon] = useState(false)
+  const [gameOver, setGameOver] = useState(false)
+
+  const [timer, setTimer] = useState(null)
+  const [timeLeft, setTimeLeft] = useState(TIME) // 5초 타이머
+
+  // 타이머 시작 함수
+  function startTimer() {
+    setTimer(
+      setInterval(() => {
+        setTimeLeft((prevTime) => {
+          const newTime = prevTime - 0.1
+          if (newTime <= 0) {
+            clearInterval(timer) // 타이머 종료
+            setGameOver(true) // 게임 오버
+            return 0
+          }
+          return parseFloat(newTime.toFixed(1))
+        })
+      }, 100)
+    ) // 0.1초 간격으로 업데이트
+  }
 
   // 초기 보드 설정, 'blue'로 설정된 길을 따라가게 됩니다.
   function createInitialBoard() {
@@ -52,73 +77,124 @@ export default function Home() {
   }, [board, gameWon])
 
   function movePlayer(key) {
-    setPlayerPosition((prev) => {
-      let newX = prev.x
-      let newY = prev.y
+    // 타이머가 아직 시작되지 않았다면 시작합니다.
+    if (!timer) {
+      startTimer()
+    }
 
-      switch (key) {
-        case "ArrowUp":
-          newY = newY > 0 ? newY - 1 : newY
-          break
-        case "ArrowDown":
-          newY = newY < 5 ? newY + 1 : newY
-          break
-        case "ArrowLeft":
-          newX = newX > 0 ? newX - 1 : newX
-          break
-        case "ArrowRight":
-          newX = newX < 5 ? newX + 1 : newX
-          break
-        default:
-          return prev // If it's not an arrow key, we don't want to move the player
-      }
+    let newX = playerPosition.x
+    let newY = playerPosition.y
 
-      // Check if the new position is a blue square
-      if (board[newY][newX] === "blue") {
-        // If the player reached the yellow square
-        if (newX === 2 && newY === 5) {
-          setGameWon(true)
+    switch (key) {
+      case "ArrowUp":
+        newY = newY > 0 ? newY - 1 : newY
+        break
+      case "ArrowDown":
+        newY = newY < 5 ? newY + 1 : newY
+        break
+      case "ArrowLeft":
+        newX = newX > 0 ? newX - 1 : newX
+        break
+      case "ArrowRight":
+        newX = newX < 5 ? newX + 1 : newX
+        break
+      default:
+        return // If it's not an arrow key, do nothing.
+    }
+
+    // 유효한 이동인지 확인
+    const isValidMove = board[newY] && board[newY][newX] === "blue"
+
+    if (isValidMove) {
+      // If the player reached the yellow square
+      if (newX === 2 && newY === 5) {
+        setGameWon(true)
+        if (timer) {
+          clearInterval(timer) // 승리 시 타이머 중지
+          setTimer(null)
         }
-
-        // Update the board with the new position
-        const newBoard = board.map((row, rowIndex) =>
-          row.map((cell, colIndex) => {
-            if (rowIndex === prev.y && colIndex === prev.x) {
-              // Mark the trail green
-              return "green"
-            }
-            if (rowIndex === newY && colIndex === newX) {
-              // Move the player to the new position
-              return "red"
-            }
-            // Keep the existing state for all other cells
-            return cell
-          })
-        )
-        setBoard(newBoard)
-        return { x: newX, y: newY }
       }
 
-      // If the new position is not a blue square, don't move the player
-      return prev
+      // Update the board with the new position
+      const newBoard = board.map((row, rowIndex) =>
+        row.map((cell, colIndex) => {
+          if (rowIndex === playerPosition.y && colIndex === playerPosition.x) {
+            return "green" // Mark the trail green
+          }
+          if (rowIndex === newY && colIndex === newX) {
+            return "red" // Move the player to the new position
+          }
+          return cell // Keep the existing state for all other cells
+        })
+      )
+
+      setBoard(newBoard)
+      setPlayerPosition({ x: newX, y: newY })
+    } else {
+      // 유효하지 않은 이동일 경우 라이프를 감소시킵니다.
+      decreaseLife()
+    }
+  }
+
+  function decreaseLife() {
+    setLives((prevLives) => {
+      const newLives = prevLives - 1
+      if (newLives <= 0) {
+        setGameOver(true)
+        setTimeout(resetGame, 1000) // 게임을 리셋합니다.
+      }
+      return newLives
     })
   }
+
+  function resetGame() {
+    // 타이머 정리
+    if (timer) {
+      clearInterval(timer)
+    }
+    setTimer(null)
+    setTimeLeft(TIME) // 타이머 시간 재설정
+
+    setBoard(createInitialBoard())
+    setPlayerPosition({ x: 0, y: 0 })
+    setLives(LIFE)
+    setGameWon(false)
+    setGameOver(false)
+  }
+
   useEffect(() => {
     if (gameWon) {
       // 게임 승리 알림을 보여주고, 게임을 초기화합니다.
       setTimeout(() => {
         alert("축하합니다! 게임에서 이겼습니다!")
-        // 게임 보드와 플레이어 위치를 초기화합니다.
-        setBoard(createInitialBoard())
-        setPlayerPosition({ x: 0, y: 0 })
-        setGameWon(false) // 게임 승리 상태를 다시 false로 설정합니다.
+        resetGame()
       }, 100) // Delay the alert slightly for better UX
+    } else if (gameOver) {
+      // 게임 오버 알림을 보여주고, 게임을 초기화합니다.
+      setTimeout(() => {
+        alert("게임 오버! 다시 시도해보세요.")
+        resetGame()
+      }, 100)
     }
-  }, [gameWon])
+  }, [gameWon, gameOver])
 
   return (
     <div style={{ padding: "20px" }}>
-      <h1>Move the Red Square to the Yellow Square</h1>
+      <h1 className='text-[24px]'>ㅋ</h1>
+      {/* 라이프 표시 */}
+      <div className='flex justify-between'>
+        <div>
+          <p>남은 시간: {timeLeft.toFixed(1)}초</p>
+        </div>
+        <div>
+          {Array.from({ length: LIFE }, (_, i) => (
+            <span key={i} style={{ color: i < lives ? "red" : "grey" }}>
+              ♥
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div
         style={{
           display: "grid",
